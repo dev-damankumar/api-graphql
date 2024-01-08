@@ -1,15 +1,22 @@
-import { getUser } from '../../../controller/user.controller';
+import {
+  getUser,
+  getUsers,
+  loginUser,
+} from "../../../controller/user.controller";
+import { User } from "../../../generated/graphql";
 
 const userQueries = {
   users: async () => {
-    return [{}];
+    return await getUsers();
   },
   user: async (_: any, args: { id: string }) => {
-    try {
-      return getUser(args.id);
-    } catch (e) {
-      throw Error('Can not find user');
-    }
+    return await getUser(args.id);
+  },
+  login: async (
+    _: any,
+    args: { email: string; password: string }
+  ): Promise<User> => {
+    return await loginUser(args.email, args.password);
   },
 };
 

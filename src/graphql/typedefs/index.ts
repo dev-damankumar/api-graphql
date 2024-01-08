@@ -1,10 +1,6 @@
 import { readFileSync, readdirSync } from 'fs';
 import { resolve } from 'path';
 
-console.log(
-  "resolve(__dirname, '../../../', 'src', 'graphql', './typedefs')",
-  resolve(__dirname, '../../../', 'src', 'graphql', './typedefs')
-);
 const gqlFiles = readdirSync(
   resolve(__dirname, '../../../', 'src', 'graphql', './typedefs')
 );

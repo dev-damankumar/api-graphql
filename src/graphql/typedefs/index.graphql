@@ -1,13 +1,10 @@
-# Custom Scalars
-scalar Date
-
 type Query {
-  users: [User]!
-  user(id: ID!): User
+  users: [PublicUser]!
+  user(id: ID!): PublicUser
+  login(email: String!, password: String!): LoggedInUser
 }
 
 type Mutation {
-  # Authors
-  createUser(user: UserCreateInput!): User!
-  updateUser(id: ID!, user: UserUpdateInput!): User!
+  createUser(user: UserCreateInput!): PublicUser!
+  updateUser(id: ID!, user: UserUpdateInput!): PublicUser!
 }

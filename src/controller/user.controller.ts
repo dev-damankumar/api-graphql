@@ -3,22 +3,28 @@ import {
   LoggedInUser,
   User,
   UserCreateInput,
+  UserUpdateInput,
 } from "./../generated/graphql";
 import UserModel from "../models/user";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
-import { jwtSecret } from "../constants";
-export const getUser = async (id: string): Promise<User | null> => {
+import { jwtSecret, siteurl } from "../constants";
+import { send } from "../utils/email";
+import { minutesToMillsecond } from "../utils/date";
+import forgotPasswordTemplate from "../templates/forgotPassword";
+import { ExpressContextFunctionArgument } from "@apollo/server/dist/esm/express4";
+import { getTokenFromHeaders } from "../utils/auth";
+const getUser = async (id: string): Promise<User | null> => {
   const user = await UserModel.findOne<User>({ _id: id });
   return user;
 };
 
-export const getUsers = async (): Promise<User[] | []> => {
+const getUsers = async (): Promise<User[] | []> => {
   const users = await UserModel.find<User>({});
   return users;
 };
 
-export const createNewUser = async (args: {
+const createNewUser = async (args: {
   user: UserCreateInput;
 }): Promise<User | Error> => {
   try {
@@ -47,7 +53,45 @@ export const createNewUser = async (args: {
   }
 };
 
-export const loginUser = async (
+type JWTPayload = {
+  email: string;
+  _id: string;
+  iat: number;
+} | null;
+const updateAnUser = async (
+  args: { user: UserUpdateInput },
+  context: ExpressContextFunctionArgument
+): Promise<User> => {
+  try {
+    const newUser = args.user;
+    const token = getTokenFromHeaders(context.req);
+    const decodedToken = (await jwt.verify(token, jwtSecret)) as JWTPayload;
+    console.log("decodedToken", decodedToken);
+    if (!decodedToken) throw new Error("Invalid token for authentication");
+    const user = (await UserModel.findOneAndUpdate(
+      { email: decodedToken.email },
+      newUser
+    )) as User;
+    if (!user)
+      throw new Error(
+        "token malfunction detected! unauthorized person can't access this resource"
+      );
+    user.password = null;
+    const updatedUser = {
+      ...user,
+      ...newUser,
+    } as User;
+    return updatedUser;
+  } catch (error) {
+    if (error instanceof Error) {
+      console.log("Error on: (updateAnUser) ", error.message);
+      throw new Error(error.message);
+    }
+    throw new Error("user counld not be updated!!");
+  }
+};
+
+const loginUser = async (
   email: string,
   password: string
 ): Promise<LoggedInUser> => {
@@ -70,13 +114,13 @@ export const loginUser = async (
 
     const token = await jwt.sign(
       { email: userExists.email, _id: userExists.id },
-      jwtSecret
+      jwtSecret,
+      { expiresIn: "1m" }
     );
     const user = {
       ...userExists._doc,
       token,
     };
-    console.log("user", user);
 
     return user as LoggedInUser;
   } catch (error) {
@@ -86,4 +130,103 @@ export const loginUser = async (
     }
     throw new Error("user does not exists");
   }
+};
+
+const forgotPassword = async (args: { email: string }) => {
+  const user = await UserModel.findOne({ email: args.email });
+  if (!user)
+    return {
+      message: "No user found with this email",
+      status: 404,
+      type: "error",
+    };
+  try {
+    const token = await jwt.sign({ email: args.email }, jwtSecret, {
+      expiresIn: "5m",
+    });
+    if (!user.security) {
+      user.security = { resetPassword: {}, verification: {} };
+    }
+    user.security.resetPassword = user.security.resetPassword || {};
+    const date = new Date(Date.now() + minutesToMillsecond(5));
+
+    user.security.resetPassword.token = token;
+    user.security.resetPassword.expiry = date;
+
+    await user.save();
+    const resetPasswordLink = `${siteurl}/reset-password/${token}`;
+    await send({
+      to: args.email,
+      subject: "Forgot Password",
+      body: forgotPasswordTemplate(user.username, resetPasswordLink),
+    });
+    return {
+      message:
+        "We have successfully send a link to your email to reset a password",
+      status: 200,
+      type: "success",
+    };
+  } catch (error) {
+    if (error instanceof Error)
+      return {
+        message: error.message,
+        status: 200,
+        type: "error",
+      };
+    return {
+      message: "Error sending email to the mail",
+      status: 200,
+      type: "error",
+    };
+  }
+};
+
+const resetPassword = async (
+  context: ExpressContextFunctionArgument,
+  args: { token: string; password: string }
+) => {
+  const user = await UserModel.findOne({
+    "security.resetPassword.token": args.token,
+  });
+  if (!user)
+    return {
+      message: "Your reset link has been expired!",
+      status: 404,
+      type: "error",
+    };
+
+  try {
+    user.security!.resetPassword!.token = null;
+    user.security!.resetPassword!.expiry = null;
+    const hasedPassword = await bcrypt.hash(args.password, 10);
+    user.password = hasedPassword;
+    await user.save();
+    return {
+      message: "We have successfully reset your password",
+      status: 200,
+      type: "success",
+    };
+  } catch (error) {
+    if (error instanceof Error)
+      return {
+        message: error.message,
+        status: 200,
+        type: "error",
+      };
+    return {
+      message: "Error while reseting your password",
+      status: 200,
+      type: "error",
+    };
+  }
+};
+
+export default {
+  getUser,
+  getUsers,
+  createNewUser,
+  updateAnUser,
+  loginUser,
+  forgotPassword,
+  resetPassword,
 };

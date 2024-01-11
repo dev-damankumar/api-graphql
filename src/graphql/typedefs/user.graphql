@@ -58,6 +58,11 @@ enum AuthType {
   MagicLink
   Social
 }
+
+enum ResponseType {
+  error
+  success
+}
 # Inputs
 input AddressInput {
   city: String
@@ -79,8 +84,12 @@ input UserCreateInput {
 input UserUpdateInput {
   firstname: String
   lastname: String
-  username: String
-  email: String
   address: AddressInput
-  mobile: String!
+  mobile: String
+}
+
+type ForgotPasswordResponse {
+  message: String
+  status: Int
+  type: ResponseType
 }

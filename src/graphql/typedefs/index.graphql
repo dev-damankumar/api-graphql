@@ -6,5 +6,7 @@ type Query {
 
 type Mutation {
   createUser(user: UserCreateInput!): PublicUser!
-  updateUser(id: ID!, user: UserUpdateInput!): PublicUser!
+  updateUser(user: UserUpdateInput!): PublicUser!
+  forgotPassword(email: String!): ForgotPasswordResponse!
+  resetPassword(token: String!, password: String!): ForgotPasswordResponse!
 }

@@ -39,6 +39,19 @@ const userSchema = new Schema(
     password: {
       type: String,
     },
+
+    security: {
+      resetPassword: {
+        otp: Number,
+        token: String,
+        expiry: Date,
+      },
+      verification: {
+        otp: Number,
+        token: String,
+        expiry: Date,
+      },
+    },
     address: {
       city: {
         type: String,

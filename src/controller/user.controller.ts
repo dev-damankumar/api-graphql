@@ -13,7 +13,8 @@ import { send } from "../utils/email";
 import { minutesToMillsecond } from "../utils/date";
 import forgotPasswordTemplate from "../templates/forgotPassword";
 import { ExpressContextFunctionArgument } from "@apollo/server/dist/esm/express4";
-import { getTokenFromHeaders } from "../utils/auth";
+import { GraphqlContextFunctionArgument } from "../types";
+import { decodeJWT } from "../utils/auth";
 const getUser = async (id: string): Promise<User | null> => {
   const user = await UserModel.findOne<User>({ _id: id });
   return user;
@@ -28,10 +29,12 @@ const createNewUser = async (args: {
   user: UserCreateInput;
 }): Promise<User | Error> => {
   try {
-    const newUser: Omit<User, "id" | "createdAt" | "isVerified" | "updatedAt"> =
-      {
-        ...args.user,
-      };
+    const newUser: Omit<
+      User,
+      "_id" | "createdAt" | "isVerified" | "updatedAt"
+    > = {
+      ...args.user,
+    };
     const userExists = await UserModel.findOne({
       email: newUser.email,
     });
@@ -41,7 +44,7 @@ const createNewUser = async (args: {
     const hasedPassword = await bcrypt.hash(args.user.password, 10);
     newUser.password = hasedPassword;
     newUser.authType = AuthType.Credentails;
-    const user = (await UserModel.create(newUser)) as User;
+    const user: User = (await UserModel.create(newUser)) as User;
     user.password = null;
     return user;
   } catch (error) {
@@ -52,24 +55,15 @@ const createNewUser = async (args: {
     throw new Error("user already exists");
   }
 };
-
-type JWTPayload = {
-  email: string;
-  _id: string;
-  iat: number;
-} | null;
 const updateAnUser = async (
   args: { user: UserUpdateInput },
-  context: ExpressContextFunctionArgument
+  context: GraphqlContextFunctionArgument
 ): Promise<User> => {
   try {
+    if (!context.auth) throw new Error("Unauthorized Access");
     const newUser = args.user;
-    const token = getTokenFromHeaders(context.req);
-    const decodedToken = (await jwt.verify(token, jwtSecret)) as JWTPayload;
-    console.log("decodedToken", decodedToken);
-    if (!decodedToken) throw new Error("Invalid token for authentication");
     const user = (await UserModel.findOneAndUpdate(
-      { email: decodedToken.email },
+      { email: context.auth.email },
       newUser
     )) as User;
     if (!user)
@@ -115,7 +109,7 @@ const loginUser = async (
     const token = await jwt.sign(
       { email: userExists.email, _id: userExists.id },
       jwtSecret,
-      { expiresIn: "1m" }
+      { expiresIn: "24h" }
     );
     const user = {
       ...userExists._doc,
@@ -134,16 +128,27 @@ const loginUser = async (
 
 const forgotPassword = async (args: { email: string }) => {
   const user = await UserModel.findOne({ email: args.email });
-  if (!user)
-    return {
-      message: "No user found with this email",
-      status: 404,
-      type: "error",
-    };
+  if (!user) throw new Error("No user found with this email");
   try {
+    if (
+      user?.security?.resetPassword?.token &&
+      user?.security?.resetPassword?.expiry
+    ) {
+      const tokenExpiryDate = new Date(user?.security?.resetPassword?.expiry);
+      const now = new Date();
+      if (now < tokenExpiryDate) {
+        return {
+          message:
+            "We have already sent a link to your email to reset a password",
+          status: 200,
+          type: "success",
+        };
+      }
+    }
     const token = await jwt.sign({ email: args.email }, jwtSecret, {
       expiresIn: "5m",
     });
+
     if (!user.security) {
       user.security = { resetPassword: {}, verification: {} };
     }

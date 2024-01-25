@@ -2,6 +2,7 @@ import { BaseContext, ContextFunction } from "@apollo/server";
 import user from "../../../controller/user.controller";
 import { UserCreateInput, UserUpdateInput } from "../../../generated/graphql";
 import { ExpressContextFunctionArgument } from "@apollo/server/dist/esm/express4";
+import { GraphqlContextFunctionArgument } from "../../../types";
 
 const userMutations = {
   createUser: async (_: any, args: { user: UserCreateInput }) => {
@@ -10,7 +11,7 @@ const userMutations = {
   updateUser: async (
     _: any,
     args: { user: UserUpdateInput },
-    context: ExpressContextFunctionArgument
+    context: GraphqlContextFunctionArgument
   ) => {
     return await user.updateAnUser(args, context);
   },
@@ -20,7 +21,7 @@ const userMutations = {
   resetPassword: async (
     _: any,
     args: { token: string; password: string },
-    context: ExpressContextFunctionArgument
+    context: GraphqlContextFunctionArgument
   ) => {
     return await user.resetPassword(context, args);
   },

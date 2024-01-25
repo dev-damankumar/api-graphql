@@ -1,0 +1,38 @@
+type Meeting implements Timestamps {
+  id: ID!
+  name: String!
+  time: String!
+  type: String!
+  date: Date!
+  users: [String]!
+  host: String!
+  createdAt: Date!
+  updatedAt: Date!
+}
+
+type TAddUser {
+  user: String!
+  id: ID!
+}
+
+input InputAddUser {
+  user: String!
+  id: ID!
+}
+
+type MeetingWithHost {
+  name: String!
+  time: String!
+  type: String!
+  date: Date!
+  users: [String]!
+  host: String!
+}
+
+input AddMeetingInput {
+  name: String!
+  time: String!
+  type: String!
+  date: Date!
+  users: [String]!
+}

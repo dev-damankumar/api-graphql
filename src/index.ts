@@ -1,20 +1,21 @@
-import express, { Request, Response } from 'express';
-import http from 'http';
-import redix from 'redis';
-import connectRedis from 'connect-redis';
-import session from 'express-session';
-import mongoose from 'mongoose';
-import cors from 'cors';
+import express, { Request, Response } from "express";
+import http from "http";
+import redix from "redis";
+import connectRedis from "connect-redis";
+import session from "express-session";
+import mongoose from "mongoose";
+import cors from "cors";
 import {
   expressMiddleware,
   ExpressContextFunctionArgument,
-} from '@apollo/server/express4';
-import { ApolloServer } from '@apollo/server';
-import { ApolloServerPluginDrainHttpServer } from '@apollo/server/plugin/drainHttpServer';
+} from "@apollo/server/express4";
+import { ApolloServer } from "@apollo/server";
+import { ApolloServerPluginDrainHttpServer } from "@apollo/server/plugin/drainHttpServer";
 
-import resolvers from './graphql/resolvers';
-import typeDefs from './graphql/typedefs';
-import { _dev_, db, port } from './constants';
+import resolvers from "./graphql/resolvers";
+import typeDefs from "./graphql/typedefs";
+import { _dev_, db, port } from "./constants";
+import { decodeJWT, getTokenFromHeaders } from "./utils/auth";
 
 async function main() {
   const app = express();
@@ -30,20 +31,27 @@ async function main() {
   app.use(express.json());
 
   app.use(
-    '/graphql',
+    "/graphql",
     cors(),
     express.json(),
     expressMiddleware(server, {
-      context: async ({ req, res }: ExpressContextFunctionArgument) => ({
-        // Add optional configuration options
-        req,
-        res,
-      }),
+      context: async ({ req, res }: ExpressContextFunctionArgument) => {
+        const token = getTokenFromHeaders(req);
+        let auth = null;
+        if (token) {
+          auth = await decodeJWT(token);
+        }
+        return {
+          req,
+          res,
+          auth,
+        };
+      },
     })
   );
   await mongoose.connect(db);
   httpServer.listen(port, () => {
-    console.log('Server Started on port:', port);
+    console.log("Server Started on port:", port);
   });
 }
 

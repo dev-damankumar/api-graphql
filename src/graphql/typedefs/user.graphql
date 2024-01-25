@@ -1,5 +1,6 @@
 # Types
 type User implements Timestamps {
+  _id: ID!
   id: ID!
   firstname: String!
   lastname: String!
@@ -16,7 +17,7 @@ type User implements Timestamps {
 }
 
 type PublicUser implements Timestamps {
-  id: ID!
+  _id: ID!
   firstname: String!
   lastname: String!
   username: String!
@@ -31,7 +32,7 @@ type PublicUser implements Timestamps {
 }
 
 type LoggedInUser implements Timestamps {
-  id: ID!
+  _id: ID!
   firstname: String!
   lastname: String!
   username: String!

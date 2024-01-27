@@ -3,7 +3,7 @@ type Query {
   user(id: ID!): PublicUser
   login(email: String!, password: String!): LoggedInUser
   getStats: Stats!
-  getMeetings: [Meeting]!
+  getMeetings(filter: IMeetingFilter): [Meeting]!
 }
 
 type Mutation {

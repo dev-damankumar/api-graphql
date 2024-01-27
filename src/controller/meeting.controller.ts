@@ -1,32 +1,41 @@
-import { AddMeetingInput } from "../generated/graphql";
+import { AddMeetingInput, IMeetingFilter } from "../generated/graphql";
 import Meeting from "../models/meeting";
-import { GraphqlContextFunctionArgument } from "../types";
-import { getTokenFromHeaders } from "../utils/auth";
-import { addGoogleMeeting } from "../utils/meeting";
+import { GraphqlContextFunctionArgument, MeetingType } from "../types";
+import { getTodayDateRange, getTommorrowDateRange } from "../utils/date";
+import { addMeeting } from "../utils/meeting/index";
 
-const getMeetings = async (context: GraphqlContextFunctionArgument) => {
-  console.log("context", context);
+const getMeetingsHandler = async (
+  context: GraphqlContextFunctionArgument,
+  data: IMeetingFilter
+) => {
   if (!context.auth) throw new Error("Unauthorized access");
-  const meetings = await Meeting.find({ host: context.auth._id });
+  const match: { [any: string]: any } = { host: context.auth._id };
+  if (data?.today) {
+    const { todayEndDate, todayStartDate } = getTodayDateRange();
+    match.startDate = { $gte: todayStartDate, $lt: todayEndDate };
+  }
+  if (data?.tommorrow) {
+    const { tommorrowEndDate, tommorrowStartDate } = getTommorrowDateRange();
+    match.startDate = { $gte: tommorrowStartDate, $lt: tommorrowEndDate };
+  }
+  console.log("match", match);
+  const meetings = await Meeting.find(match);
   return meetings;
 };
 
-const addMeeting = async (
+const addMeetingHandler = async (
   context: GraphqlContextFunctionArgument,
-  data: AddMeetingInput
+  data: AddMeetingInput & { type: MeetingType }
 ) => {
   if (!context.auth) throw new Error("Unauthorized access");
-  console.log("context.auth", context.auth);
   const host = context.auth._id;
-  const token = getTokenFromHeaders(context.req);
-  console.log("data", { ...data, host });
-
+  const event = await addMeeting(data.type, data);
   const meeting = await Meeting.create({ ...data, host });
-  await addGoogleMeeting({ ...data, host }, token);
+
   return meeting;
 };
 
 export default {
-  getMeetings,
-  addMeeting,
+  getMeetingsHandler,
+  addMeetingHandler,
 };

@@ -1,8 +1,5 @@
-import express, { Request, Response } from "express";
+import express from "express";
 import http from "http";
-import redix from "redis";
-import connectRedis from "connect-redis";
-import session from "express-session";
 import mongoose from "mongoose";
 import cors from "cors";
 import {

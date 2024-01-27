@@ -10,19 +10,27 @@ const meetingSchema = new Schema(
       type: String,
       required: true,
     },
-    date: {
+    description: {
+      type: String,
+    },
+    location: {
+      type: String,
+    },
+    startDate: {
       type: Date,
       required: true,
     },
-    time: {
-      type: String,
+    endDate: {
+      type: Date,
       required: true,
     },
     users: [
       {
-        type: mongoose.Schema.Types.String,
-        required: true,
-        ref: "User",
+        email: {
+          type: mongoose.Schema.Types.String,
+          required: true,
+          ref: "User",
+        },
       },
     ],
     host: {

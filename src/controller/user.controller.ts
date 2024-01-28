@@ -159,7 +159,7 @@ const forgotPassword = async (args: { email: string }) => {
     user.security.resetPassword.expiry = date;
 
     await user.save();
-    const resetPasswordLink = `${siteurl}/reset-password/${token}`;
+    const resetPasswordLink = `${siteurl}/auth/reset-password?token=${token}`;
     await send({
       to: args.email,
       subject: "Forgot Password",

@@ -19,7 +19,7 @@ const getMeetingsHandler = async (
     match.startDate = { $gte: tommorrowStartDate, $lt: tommorrowEndDate };
   }
   console.log("match", match);
-  const meetings = await Meeting.find(match);
+  const meetings = await Meeting.find(match).sort("startDate").exec();
   return meetings;
 };
 
